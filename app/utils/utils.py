@@ -1,6 +1,10 @@
 import os
 from dotenv import load_dotenv
 from typing import List, Optional
+from fastcoref import spacy_component
+import nest_asyncio
+
+nest_asyncio.apply()
 
 import spacy
 import nltk
@@ -15,8 +19,14 @@ from llama_index.core.indices.property_graph import (
     LLMSynonymRetriever,
     VectorContextRetriever,
 )
+from llama_index.llms.groq import Groq
+
+nlp = spacy.load("en_core_web_sm")
+nlp.add_pipe("fastcoref")
+nltk.download('punkt_tab', quiet=True)
 
 load_dotenv()
+
 
 class CustomGraph:
     _instance = None
@@ -29,7 +39,7 @@ class CustomGraph:
     def __init__(self, llm_model: str = "Qwen/Qwen2.5-1.5B-Instruct", embed_model: str = "BAAI/bge-base-en-v1.5"):
         if not hasattr(self, 'initialized'):  # Avoid reinitializing on repeated instantiation
             self.llm, self.embed_model = self.load_model(llm_model, embed_model)
-            self.nlp = self.load_spacy_pipeline()
+            # self.nlp = self.load_spacy_pipeline()
             self.graph_store = self.load_neo4j_graph_store()
             self.check_nltk_downloaded()
             self.kg_extractor = self.initialize_kg_extractor()
@@ -55,19 +65,22 @@ class CustomGraph:
     @staticmethod
     def load_model(llm_model: str, embed_model: str):
         try:
-            llm_md = HuggingFaceLLM(
-                context_window=4096,
-                max_new_tokens=2048,
-                generate_kwargs={"temperature": 0.1, "top_k": 1},
-                tokenizer_name=llm_model,
-                model_name=llm_model,
-                device_map="auto",
-                model_kwargs={
-                    "token": os.getenv("HF_TOKEN"),
-                    # "disk_offload": True,
-                    },
-                tokenizer_kwargs={"token": os.getenv("HF_TOKEN")},
-            )
+            # llm_md = HuggingFaceLLM(
+            #     context_window=4096,
+            #     max_new_tokens=2048,
+            #     generate_kwargs={"temperature": 0.1, "top_k": 1},
+            #     tokenizer_name=llm_model,
+            #     model_name=llm_model,
+            #     device_map="cuda",
+            #     model_kwargs={
+            #         "token": os.getenv("HF_TOKEN"),
+            #         "disk_offload": True,
+            #         },
+            #     tokenizer_kwargs={"token": os.getenv("HF_TOKEN")},
+            # )
+
+            llm_md = Groq(model="llama3-70b-8192", api_key=os.getenv('GROQ_API_KEY'))
+
             embed_md = HuggingFaceEmbedding(model_name=embed_model)
             Settings.llm = llm_md
             Settings.embed_model = embed_md
@@ -87,7 +100,7 @@ class CustomGraph:
 
     def initialize_index(self):
         return PropertyGraphIndex.from_existing(
-            graph_store=self.graph_store,
+            self.graph_store,
             embed_model=self.embed_model,
             kg_extractors=self.kg_extractor,
             show_progress=True,
@@ -127,9 +140,11 @@ class CustomGraph:
             print(f"Error creating Neo4j graph store: {e}")
             return None
 
+    # @staticmethod
     def text_coref(self, input_text: str) -> str:
+        print(input_text)
         try:
-            doc = self.nlp(input_text, component_cfg={"fastcoref": {'resolve_text': True}})
+            doc = nlp(input_text, component_cfg={"fastcoref": {'resolve_text': True}})
             return doc._.resolved_text
         except Exception as e:
             print(f"Error processing text coreference: {e}")
@@ -160,8 +175,9 @@ class CustomGraph:
             embed_model=self.embed_model,
             kg_extractors=self.kg_extractor,
             property_graph_store=self.graph_store,
-            show_progress=True,
+            # show_progress=True,
         )
 
     def query(self, conversation_id: int, query: str) -> str:
-        return str(self.query_engine.query(query))
+        result = self.query_engine.query(query)
+        return str(result)
