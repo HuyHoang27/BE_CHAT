@@ -4,8 +4,6 @@ from app.services import LLMService
 import logging
 import nest_asyncio
 import os
-nest_asyncio.apply()
-import asyncio
 
 router = APIRouter()
 llm_service = LLMService()

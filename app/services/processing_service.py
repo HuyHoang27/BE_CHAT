@@ -1,7 +1,6 @@
 from . import TextProcessor, ImageProcessor
 from .dependencies import Graph, List
-import nest_asyncio
-nest_asyncio.apply()
+
 class LLMService:
     def __init__(self):
         self.graph = Graph()

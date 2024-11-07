@@ -6,9 +6,6 @@ from pydantic import BaseModel, Field
 import spacy
 from fastcoref import spacy_component
 from llama_index.llms.groq import Groq
-import nest_asyncio
-# Apply async compatibility for nested event loops
-nest_asyncio.apply()
 from llama_index.core import QueryBundle
 # Additional imports
 import nltk
