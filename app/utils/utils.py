@@ -1,10 +1,20 @@
 import os
 from dotenv import load_dotenv
-from typing import List, Optional
-
+from typing import List, Optional, Type
+from pydantic import BaseModel, Field
+# Import libraries for NLP and LLM processing
 import spacy
+from fastcoref import spacy_component
+from llama_index.llms.groq import Groq
+import nest_asyncio
+# Apply async compatibility for nested event loops
+nest_asyncio.apply()
+from llama_index.core import QueryBundle
+# Additional imports
 import nltk
-from llama_index.llms.huggingface import HuggingFaceLLM
+# Uncomment the line below if you want to use HuggingFaceLLM from llama_index
+# from llama_index.llms.huggingface import HuggingFaceLLM
+
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.core import Settings
 from llama_index.core.schema import Document
@@ -14,9 +24,12 @@ from llama_index.core.indices.property_graph import (
     DynamicLLMPathExtractor,
     LLMSynonymRetriever,
     VectorContextRetriever,
+    CypherTemplateRetriever,
 )
-
-load_dotenv()
+import os
+# Load environment variables
+load_dotenv(os.path.join(os.path.dirname(__file__), '../.env'))
+LLAMA_CLOUD_API_KEY = os.environ["LLAMA_CLOUD_API_KEY"]
 
 class CustomGraph:
     _instance = None
@@ -40,7 +53,7 @@ class CustomGraph:
 
     @staticmethod
     def check_nltk_downloaded():
-        nltk.download('punkt', quiet=True)
+        nltk.download('punkt_tab', quiet=True)
 
     @staticmethod
     def load_spacy_pipeline():
@@ -55,19 +68,20 @@ class CustomGraph:
     @staticmethod
     def load_model(llm_model: str, embed_model: str):
         try:
-            llm_md = HuggingFaceLLM(
-                context_window=4096,
-                max_new_tokens=2048,
-                generate_kwargs={"temperature": 0.1, "top_k": 1},
-                tokenizer_name=llm_model,
-                model_name=llm_model,
-                device_map="auto",
-                model_kwargs={
-                    "token": os.getenv("HF_TOKEN"),
-                    # "disk_offload": True,
-                    },
-                tokenizer_kwargs={"token": os.getenv("HF_TOKEN")},
-            )
+            # llm_md = HuggingFaceLLM(
+            #     context_window=4096,
+            #     max_new_tokens=2048,
+            #     generate_kwargs={"temperature": 0.1, "top_k": 1},
+            #     tokenizer_name=llm_model,
+            #     model_name=llm_model,
+            #     device_map="auto",
+            #     model_kwargs={
+            #         "token": os.getenv("HF_TOKEN"),
+            #         # "disk_offload": True,
+            #         },
+            #     tokenizer_kwargs={"token": os.getenv("HF_TOKEN")},
+            # )
+            llm_md = Groq(model="llama3-8b-8192", api_key=os.getenv('GROQ_API_KEY'))
             embed_md = HuggingFaceEmbedding(model_name=embed_model)
             Settings.llm = llm_md
             Settings.embed_model = embed_md
@@ -87,13 +101,14 @@ class CustomGraph:
 
     def initialize_index(self):
         return PropertyGraphIndex.from_existing(
-            graph_store=self.graph_store,
+            property_graph_store=self.graph_store,
             embed_model=self.embed_model,
             kg_extractors=self.kg_extractor,
             show_progress=True,
         )
 
     def initialize_retrievers(self):
+        
         llm_synonym = LLMSynonymRetriever(
             self.index.property_graph_store,
             llm=self.llm,
@@ -118,7 +133,6 @@ class CustomGraph:
             username = os.getenv("NEO4J_USERNAME")
             password = os.getenv("NEO4J_PASSWORD")
             url = os.getenv("NEO4J_URL")
-
             if not all([username, password, url]):
                 raise ValueError("Missing required environment variables for Neo4j configuration.")
 
@@ -163,5 +177,30 @@ class CustomGraph:
             show_progress=True,
         )
 
-    def query(self, conversation_id: int, query: str) -> str:
-        return str(self.query_engine.query(query))
+    def query(self, conversation_id: str, query: str) -> str:
+        new_query = """
+        {query}
+        Based on the Cypher queries you've retrieved, focus only on nodes where conversation_id = {conversation_id}. 
+        For the selected nodes, please provide the following details in the specified format:
+        Result:
+        <Answer here>
+        Explain:
+        <Answer here>
+
+        Note: If there are no nodes with conversation_id = {conversation_id}, respond with:
+        'I cannot answer your question. Please provide more context.'
+
+        Output in Result should be in one of the following formats:
+        - If you have an answer: 'The correct answer is (A/B/C/D)'
+        - If you cannot answer: 'I cannot answer your question. Please provide more context.'
+        """.format(conversation_id=conversation_id, query=query)
+
+
+
+        # Xử lý dữ liệu nhận được từ truy vấn
+        query_doc = self.index.as_query_engine(
+            sub_retrievers=[self.llm_synonym, self.vector_context],
+            llm=self.llm
+        ).query(new_query)
+        
+        return str(query_doc)

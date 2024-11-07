@@ -11,13 +11,15 @@ from .dependencies import (
     TextNode,
     deepcopy
 )
-
+services_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+tesseract_path = os.path.join(services_dir, '.venv', 'Scripts', 'pytesseract.exe')
+pytesseract.pytesseract.tesseract_cmd = tesseract_path
 class ImageProcessor(ProcessorBase):
-    async def process(self, data: List[bytes], conversation_id: int) -> List[Document]:
-        sub_docs = await self.process_images(data, conversation_id)
+    def process(self, data: List[bytes], conversation_id: int) -> List[Document]:
+        sub_docs = self.process_images(data, conversation_id)
         return sub_docs
 
-    async def process_images(self, data: List[bytes], conversation_id: int) -> List[Document]:
+    def process_images(self, data: List[bytes], conversation_id: int) -> List[Document]:
         temp_dir = './temp_pdfs'
         os.makedirs(temp_dir, exist_ok=True)
 
@@ -29,8 +31,9 @@ class ImageProcessor(ProcessorBase):
             image = Image.open(BytesIO(image_file))
 
             # Convert the image to a searchable PDF (binary data)
+            print("ok")
             pdf_bytes = pytesseract.image_to_pdf_or_hocr(image, extension='pdf')
-
+            print("ok")
             # Generate a temporary file name for each image
             temp_pdf_path = os.path.join(temp_dir, f'temp_{idx}.pdf')
             with open(temp_pdf_path, 'wb') as f:
@@ -65,7 +68,7 @@ class ImageProcessor(ProcessorBase):
         
         coref_text = self.graph.text_coref(text)
         chunks = self.graph.semantic_chunking(coref_text, 51)
-        sub_docs = [Document(text=chunk, metadata={"doc_id": conversation_id}) for chunk in chunks]
+        sub_docs = [Document(text=chunk, metadata={"conversation_id": conversation_id}) for chunk in chunks]
         return sub_docs
 
     def get_page_nodes(self, docs, separator="\n---\n"):

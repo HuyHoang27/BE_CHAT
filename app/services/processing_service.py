@@ -1,6 +1,7 @@
 from . import TextProcessor, ImageProcessor
 from .dependencies import Graph, List
-
+import nest_asyncio
+nest_asyncio.apply()
 class LLMService:
     def __init__(self):
         self.graph = Graph()
@@ -28,14 +29,15 @@ class LLMService:
 
             # Process PDF documents if provided
             # if pdf_docs is not None:
-            #     processed_pdfs = [self.pdf_processor.process(doc) for doc in pdf_docs]
+            #     processed_pdfs = [await self.pdf_processor.process(doc) for doc in pdf_docs]
             #     sub_docs.extend(processed_pdfs)
 
+            print("LLMService Ok")
             self.graph.add_to_graph(sub_docs)
 
         except Exception as e:
             print(f"An error occurred while adding to the graph: {e}")
             raise
 
-    def query(self, conversation_id: int, query: str) -> str:
+    def query(self, conversation_id: str, query: str) -> str:
         return self.graph.query(conversation_id, query)
