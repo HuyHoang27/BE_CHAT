@@ -28,6 +28,10 @@ import os
 load_dotenv(os.path.join(os.path.dirname(__file__), '../.env'))
 LLAMA_CLOUD_API_KEY = os.environ["LLAMA_CLOUD_API_KEY"]
 
+import nest_asyncio
+
+nest_asyncio.apply()
+
 class CustomGraph:
     _instance = None
 

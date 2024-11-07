@@ -13,7 +13,7 @@ from .dependencies import (
 )
 services_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 tesseract_path = os.path.join(services_dir, '.venv', 'Scripts', 'pytesseract.exe')
-pytesseract.pytesseract.tesseract_cmd = tesseract_path
+pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
 class ImageProcessor(ProcessorBase):
     def process(self, data: List[bytes], conversation_id: int) -> List[Document]:
         sub_docs = self.process_images(data, conversation_id)
@@ -56,13 +56,28 @@ class ImageProcessor(ProcessorBase):
         for temp_pdf in temp_pdf_files:
             os.remove(temp_pdf)
 
-        documents = LlamaParse(result_type="markdown").load_data(output_pdf_path)
+        parser_gpt4o = LlamaParse(
+            result_type="markdown",
+            parsing_instructions='This is a TOEIC test in Part 7. Please extract the correct format of Part 7 and fully extract all content included in the test.',
+            gpt4o_mode=True,
+            split_by_page=True,
+        )
+
+        # documents_gpt4o = parser_gpt4o.load_data(output_pdf)
+
+        # documents = LlamaParse(result_type="markdown").load_data(output_pdf_path)
+
+        documents = parser_gpt4o.load_data(output_pdf_path)
+
         page_nodes = self.get_page_nodes(documents)
+
 
         text = ''
         for node in page_nodes:
             content = node.get_content()
             text += content + '\n\n'
+
+        print(text)
 
         os.remove(output_pdf_path)
         
