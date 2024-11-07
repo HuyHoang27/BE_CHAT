@@ -2,7 +2,6 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from typing import List, Optional
 from app.services import LLMService
 import logging
-import nest_asyncio
 import os
 
 router = APIRouter()
