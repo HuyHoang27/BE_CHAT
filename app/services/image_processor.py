@@ -15,11 +15,11 @@ services_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(
 tesseract_path = os.path.join(services_dir, '.venv', 'Scripts', 'pytesseract.exe')
 pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
 class ImageProcessor(ProcessorBase):
-    def process(self, data: List[bytes], conversation_id: int) -> List[Document]:
+    def process(self, data: List[bytes], conversation_id: str) -> List[Document]:
         sub_docs = self.process_images(data, conversation_id)
         return sub_docs
 
-    def process_images(self, data: List[bytes], conversation_id: int) -> List[Document]:
+    def process_images(self, data: List[bytes], conversation_id: str) -> List[Document]:
         temp_dir = './temp_pdfs'
         os.makedirs(temp_dir, exist_ok=True)
 

@@ -12,9 +12,10 @@ from app.utils import Graph
 from llama_index.core import PropertyGraphIndex
 from llama_parse import LlamaParse
 from llama_index.core.schema import Document, TextNode
-
+import re
+import subprocess
 __all__ = [
     "ABC", "abstractmethod", "BytesIO", "List", "os", "deepcopy",
-    "Graph", "Image", "PdfMerger", "pytesseract", 
+    "Graph", "Image", "PdfMerger", "pytesseract", "re", "subprocess"
     "PropertyGraphIndex", "LlamaParse", "Document", "TextNode"
 ]

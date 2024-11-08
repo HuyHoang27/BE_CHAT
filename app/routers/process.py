@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 @router.post("/upload-files", response_model=dict)
 async def upload_files(
-    conversation_id: int = Form(..., description="Unique ID for the conversation"),
+    conversation_id: str = Form(..., description="Unique ID for the conversation"),
     text_docs: Optional[str] = Form(None, description="A message string"),
     files: Optional[List[UploadFile]] = File(None, description="A list of binary files")  # Allow files to be optional
 ) -> dict:

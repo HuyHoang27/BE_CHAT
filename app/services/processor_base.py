@@ -5,5 +5,5 @@ class ProcessorBase(ABC):
         self.graph = Graph()
 
     @abstractmethod
-    def process(self, data, conversation_id: int) -> List[Document]:
+    def process(self, data, conversation_id: str) -> List[Document]:
         pass
